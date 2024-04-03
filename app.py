@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import os
 
 def generate_modulation_patterns(frame_count, height, width):
     """Generate simple binary modulation patterns."""
@@ -8,23 +9,32 @@ def generate_modulation_patterns(frame_count, height, width):
         patterns[i, :, :] = np.random.rand(height, width) > 0.5
     return patterns
 
-def video_to_sci_encoder(video_path, output_path, frame_count=10, start_time_msec=0):
-    """Convert a video to an SCI encoded snapshot, starting from start_time_msec."""
+def video_to_sci_encoder(video_path, output_path, pattern_output_dir, frame_count=10, start_time_msec=0):
+    """Convert a video to an SCI encoded snapshot, starting from start_time_msec, and save modulation patterns."""
     # Open the video file
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         print("Error: Could not open video.")
         return
     
+    # Ensure the output directory for patterns exists
+    if not os.path.exists(pattern_output_dir):
+        os.makedirs(pattern_output_dir)
+    
     # Set the start position in milliseconds
     cap.set(cv2.CAP_PROP_POS_MSEC, start_time_msec)
 
     # Get video properties
-    width  = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     
     # Generate modulation patterns
     patterns = generate_modulation_patterns(frame_count, height, width)
+
+    # Save each modulation pattern as an image
+    for i, pattern in enumerate(patterns):
+        pattern_image = (pattern * 255).astype(np.uint8)  # Convert pattern to 8-bit image
+        cv2.imwrite(os.path.join(pattern_output_dir, f'pattern_{i:02d}.png'), pattern_image)
 
     # Prepare an empty frame for the SCI snapshot
     sci_snapshot = np.zeros((height, width), dtype=np.float32)
@@ -54,11 +64,13 @@ def video_to_sci_encoder(video_path, output_path, frame_count=10, start_time_mse
     
     # Release the video capture object
     cap.release()
-    print("SCI snapshot saved to", output_path)
+    print(f"SCI snapshot saved to {output_path}")
+    print(f"Modulation patterns saved to {pattern_output_dir}")
 
 # Example usage
 video_path = "input/video.mp4"
 output_path = "output/output.png"
+pattern_output_dir = "output/patterns"
 start_time_msec = 10000  # Start at 10 seconds into the video
 frame_count = 10
-video_to_sci_encoder(video_path, output_path, frame_count, start_time_msec=start_time_msec)
+video_to_sci_encoder(video_path, output_path, pattern_output_dir, frame_count, start_time_msec=start_time_msec)
